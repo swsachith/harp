@@ -6,7 +6,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import java.io.*;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 public class Utils {
@@ -144,6 +146,20 @@ public class Utils {
     // out.close();
     System.out
       .println("Wrote centroids data to file");
+  }
+
+  public static Set<Integer> getRandomRange(int min, int max, int batchSize) {
+    Set<Integer> resultSet = new HashSet<>();
+    while (resultSet.size() < batchSize) {
+      resultSet.add(generateRandomNumberInRange(min, max));
+    }
+    return resultSet;
+  }
+
+
+  private static int generateRandomNumberInRange(int min, int max) {
+    Random random = new Random();
+    return random.nextInt((max - min) + 1) + min;
   }
 
 }

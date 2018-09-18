@@ -30,10 +30,10 @@ public class MiniBatchKmeansMapCollective
 
   @Override
   public int run(String[] args) throws Exception {
-    if (args.length < 7) {
+    if (args.length < 8) {
       System.err.println(
         "Usage: MiniBatchKmeansMapCollective <numOfDataPoints> <num of Centroids> "
-          + "<size of vector> <number of map tasks> <number of iteration> <workDir> <localDir> <communication operation>\n"
+          + "<size of vector> <number of map tasks> <number of iteration> <workDir> <localDir> <communication operation> <batchSize>\n"
           + "<communication operation> includes:\n  "
           + "[allreduce]: use allreduce operation to synchronize centroids \n"
           + "[regroup-allgather]: use regroup and allgather operation to synchronize centroids \n"
@@ -53,6 +53,7 @@ public class MiniBatchKmeansMapCollective
     String workDir = args[5];
     String localDir = args[6];
     String operation = args[7];
+    int batchSize = Integer.parseInt(args[8]);
 
     System.out.println(
       "Number of Map Tasks = " + numMapTasks);
@@ -65,7 +66,7 @@ public class MiniBatchKmeansMapCollective
 
     launch(numOfDataPoints, numCentroids,
       sizeOfVector, numMapTasks, numIteration,
-      workDir, localDir, operation);
+      workDir, localDir, operation, batchSize);
     System.out.println("HarpKmeans Completed");
     return 0;
   }
@@ -74,7 +75,7 @@ public class MiniBatchKmeansMapCollective
     int numCentroids, int sizeOfVector,
     int numMapTasks, int numIteration,
     String workDir, String localDir,
-    String operation) throws IOException,
+    String operation, int batchSize) throws IOException,
     URISyntaxException, InterruptedException,
     ExecutionException, ClassNotFoundException {
 
@@ -105,7 +106,7 @@ public class MiniBatchKmeansMapCollective
     runKMeans(numOfDataPoints, numCentroids,
       sizeOfVector, numIteration, JobID,
       numMapTasks, configuration, workDirPath,
-      dataDir, cenDir, outDir, operation);
+      dataDir, cenDir, outDir, operation, batchSize);
     long endTime = System.currentTimeMillis();
     System.out
       .println("Total K-means Execution Time: "
@@ -117,7 +118,7 @@ public class MiniBatchKmeansMapCollective
     int numIterations, int JobID, int numMapTasks,
     Configuration configuration, Path workDirPath,
     Path dataDir, Path cDir, Path outDir,
-    String operation)
+    String operation, int batchSize)
     throws IOException, URISyntaxException,
     InterruptedException, ClassNotFoundException {
 
@@ -139,7 +140,7 @@ public class MiniBatchKmeansMapCollective
         numOfDataPoints, numCentroids, vectorSize,
         numMapTasks, configuration, workDirPath,
         dataDir, cDir, outDir, JobID,
-        numIterations, operation);
+        numIterations, operation, batchSize);
 
       System.out
         .println(
@@ -183,7 +184,7 @@ public class MiniBatchKmeansMapCollective
     Configuration configuration, Path workDirPath,
     Path dataDir, Path cDir, Path outDir,
     int jobID, int numIterations,
-    String operation)
+    String operation, int batchSize)
     throws IOException, URISyntaxException {
 
     Job job = Job.getInstance(configuration,
@@ -209,9 +210,8 @@ public class MiniBatchKmeansMapCollective
       cFile.toString());
     jobConfig.setInt(MiniBatchKMeansConstants.JOB_ID,
       jobID);
-    jobConfig.setInt(
-      MiniBatchKMeansConstants.NUM_ITERATONS,
-      numIterations);
+    jobConfig.setInt(MiniBatchKMeansConstants.NUM_ITERATONS, numIterations);
+    jobConfig.setInt(MiniBatchKMeansConstants.BATCH_SIZE, batchSize);
     job.setInputFormatClass(
       MultiFileInputFormat.class);
     job.setJarByClass(MiniBatchKmeansMapCollective.class);

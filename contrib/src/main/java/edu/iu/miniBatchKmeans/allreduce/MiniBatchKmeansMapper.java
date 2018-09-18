@@ -9,7 +9,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Set;
 
+import edu.iu.miniBatchKmeans.common.Utils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -40,7 +42,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     // number of points
     private int numPoints;
     // batch size of the mini-batch
-    private long batchSize;
+    private int batchSize;
     private double MSE;
 
     /**
@@ -115,7 +117,8 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
         // load data
         // Todo: randomize the data reading from files
         // Todo: read the batch from all the files
-        ArrayList<DoubleArray> dataPoints = loadData(fileNames, dimension, conf);
+        ArrayList<DoubleArray> fullDataPoints = loadData(fileNames, dimension, conf);
+        ArrayList<DoubleArray> dataPoints = getRandomBatch(fullDataPoints, batchSize);
         numPoints = dataPoints.size();
 
         Table<DoubleArray> previousCenTable;
@@ -367,5 +370,14 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
             }
             System.out.println();
         }
+    }
+
+    private ArrayList<DoubleArray> getRandomBatch(List<DoubleArray> fullDataSet, int batchSize) {
+        Set<Integer> randomRangeNumbers = Utils.getRandomRange(0, fullDataSet.size(), batchSize);
+        ArrayList<DoubleArray> resultArray = new ArrayList<>();
+        for (Integer number: randomRangeNumbers) {
+            resultArray.add(fullDataSet.get(number));
+        }
+        return resultArray;
     }
 }
