@@ -256,9 +256,9 @@ public class KmeansMapCollective
       numMapTasks);
 
 	jobConf.setInt(
-      "mapreduce.map.collective.memory.mb", 6000);
+      "mapreduce.map.collective.memory.mb", 1024);
     // mapreduce.map.collective.java.opts
-    int xmx = (int) Math.ceil((6000)*0.5);
+    int xmx = (int) Math.ceil((1024)*0.5);
     int xmn = (int) Math.ceil(0.25 * xmx);
     jobConf.set(
       "mapreduce.map.collective.java.opts",
