@@ -115,15 +115,15 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
         printTable(cenTable);
 
         // load data
-        // Todo: randomize the data reading from files
-        // Todo: read the batch from all the files
         ArrayList<DoubleArray> fullDataPoints = loadData(fileNames, dimension, conf);
-        ArrayList<DoubleArray> dataPoints = getRandomBatch(fullDataPoints, batchSize);
-        numPoints = dataPoints.size();
+        numPoints = batchSize;
 
         Table<DoubleArray> previousCenTable;
         // iterations
         for (int iter = 0; iter < iteration; iter++) {
+            // Todo: randomize the data reading from files
+            // Todo: read the batch from all the files
+            ArrayList<DoubleArray> dataPoints = getRandomBatch(fullDataPoints, batchSize);
             previousCenTable = cenTable;
             cenTable = new Table<>(0, new DoubleArrPlus());
 
