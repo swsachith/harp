@@ -47,7 +47,7 @@ runtest()
     	# 	[regroup-allgather]: use regroup and allgather operation to synchronize centroids 
     	# 	[broadcast-reduce]: use broadcast and reduce operation to synchronize centroids
     	# 	[push-pull]: use push and pull operation to synchronize centroids
-    hadoop jar $bin $className 1000000 10 10 1 1000 $1 /tmp/kmeans $2 $3
+    hadoop jar $bin $className 10000 10 10 1 1000 $1 /tmp/kmeans $2 $3
     
     if [ $? -ne 0 ]; then
         echo "run km failure"
