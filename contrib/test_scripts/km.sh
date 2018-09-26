@@ -6,8 +6,8 @@
 
 #get the startup directory
 startdir=$(dirname $0)
-harproot=/Users/swithana/git/personal/harp
-bin=/Users/swithana/git/personal/harp/contrib/target/contrib-0.1.0.jar
+harproot=$HARP_ROOT_DIR
+bin=$HARP_ROOT_DIR/contrib/target/contrib-0.1.0.jar
 hdfsroot=/harp-test
 hdfsdatadir=$hdfsroot/km-syn/
 hdfsoutput=$hdfsroot/km/
