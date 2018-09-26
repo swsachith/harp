@@ -374,7 +374,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     }
 
     private ArrayList<DoubleArray> getRandomBatch(List<DoubleArray> fullDataSet, int batchSize) {
-        Set<Integer> randomRangeNumbers = Utils.getRandomRange(0, fullDataSet.size(), batchSize);
+        Set<Integer> randomRangeNumbers = Utils.getRandomRange(0, fullDataSet.size() - 1, batchSize);
         ArrayList<DoubleArray> resultArray = new ArrayList<>();
         for (Integer number: randomRangeNumbers) {
             resultArray.add(fullDataSet.get(number));
