@@ -6,9 +6,9 @@
 
 #get the startup directory
 startdir=$(dirname $0)
-harproot=$HARP_ROOT_DIR
-bin=$HARP_ROOT_DIR/contrib/target/contrib-0.1.0.jar
-hdfsroot=/harp-test
+harproot=$(readlink -m $startdir/../../)
+bin=$harproot/contrib/target/contrib-0.1.0.jar
+dfsroot=/harp-test
 hdfsdatadir=$hdfsroot/km-syn/
 hdfsoutput=$hdfsroot/km/
 
