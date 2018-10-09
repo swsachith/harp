@@ -15,7 +15,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 public class Utils {
-  private final static int DATA_RANGE = 10;
+  private final static int DATA_RANGE = 1000;
 
   public static void generateData(
     int numOfDataPoints, int vectorSize,

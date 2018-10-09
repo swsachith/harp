@@ -110,7 +110,7 @@ public class KmeansMapper extends CollectiveMapper<String, String, Object, Objec
     printTable(cenTable);
 
     // load data
-    ArrayList<DoubleArray> dataPoints = loadData(fileNames, dimension, conf);
+    ArrayList<DoubleArray> dataPoints = loadRcv1v2Data(fileNames, dimension, conf);
     numPoints = dataPoints.size();
 
     Table<DoubleArray> previousCenTable;
@@ -321,6 +321,38 @@ public class KmeansMapper extends CollectiveMapper<String, String, Object, Objec
         partitionId++;
       }
     }
+  }
+
+  // load data form RCV1v2
+  private ArrayList<DoubleArray> loadRcv1v2Data(
+          List<String> fileNames, int vectorSize,
+          Configuration conf) throws IOException {
+    ArrayList<DoubleArray> data = new ArrayList<>();
+    int k = 0;
+    for (String filename : fileNames) {
+      k++;
+      FileSystem fs = FileSystem.get(conf);
+      Path dPath = new Path(filename);
+      FSDataInputStream in = fs.open(dPath);
+      BufferedReader br = new BufferedReader(new InputStreamReader(in));
+      String line;
+      String[] vector;
+      while ((line = br.readLine()) != null) {
+        vector = line.split("\\s+");
+        double[] aDataPoint = new double[vectorSize];
+        // starting from i = 1 to skip the line number
+        for (int i = 1; i < vector.length; i++) {
+          String[] sub_parts = vector[i].split(":");
+          aDataPoint[Integer.parseInt(sub_parts[0])] = Double.parseDouble(sub_parts[1]) * 1000;
+        }
+        DoubleArray da = new DoubleArray(aDataPoint, 0, vectorSize);
+        data.add(da);
+      }
+      if (k == 3) {
+        break;
+      }
+    }
+    return data;
   }
 
   // load data form HDFS

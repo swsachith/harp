@@ -92,9 +92,7 @@ public class MiniBatchKmeansMapCollective
     fs.mkdirs(outDir);
 
     System.out.println("Generate data.");
-    Utils.generateData(numOfDataPoints,
-      sizeOfVector, numMapTasks, fs, localDir,
-      dataDir);
+//    Utils.generateData(numOfDataPoints, sizeOfVector, numMapTasks, fs, localDir, dataDir);
 
     int JobID = 0;
     Utils.generateInitialCentroids(numCentroids,

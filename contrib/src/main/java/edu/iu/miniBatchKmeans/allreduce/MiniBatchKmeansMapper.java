@@ -29,7 +29,7 @@ import edu.iu.miniBatchKmeans.common.MiniBatchKMeansConstants;
 /**
  * The idea behind this implementation is to partition the points among the mappers and
  * do the assignment to centroid calculation in parallel.
- *
+ * <p>
  * In each mapper each point is assigned to a centroid. These locally assingned points are
  * summed up and averaged globally to get the global assignment. In order to do the global
  * calculation, this implementation uses all-reduce collective.
@@ -48,6 +48,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     /**
      * This is the initialization function of the K-Means Mapper. Here we can read the parameters
      * as in a normal Hadoop job.
+     *
      * @param context the context
      */
     @Override
@@ -66,9 +67,10 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
 
     /**
      * This is the entry point of each map task. Here we will do the parallel computation
-     * @param reader reader
+     *
+     * @param reader  reader
      * @param context context
-     * @throws IOException if an error occurs
+     * @throws IOException          if an error occurs
      * @throws InterruptedException if an error occurs
      */
     protected void mapCollective(KeyValReader reader, Context context)
@@ -115,7 +117,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
         printTable(cenTable);
 
         // load data
-        ArrayList<DoubleArray> fullDataPoints = loadData(fileNames, dimension, conf);
+        ArrayList<DoubleArray> fullDataPoints = loadRcv1v2Data(fileNames, dimension, conf);
         numPoints = batchSize;
 
         Table<DoubleArray> previousCenTable;
@@ -154,6 +156,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
 
     /**
      * Broadcast the centroids from master to others
+     *
      * @param cenTable centroids
      * @throws IOException if fail to broadcast
      */
@@ -174,9 +177,10 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     /**
      * Main computation of K-Means, go through every point and assigned it to the nearest centroid
      * We put the sum of the points into the new centroid and the number of points assigned
-     * @param cenTable centroids
+     *
+     * @param cenTable         centroids
      * @param previousCenTable previous centroids
-     * @param dataPoints data points
+     * @param dataPoints       data points
      * @return the error, this can be used to terminate the calculation
      */
     private double computation(Table<DoubleArray> cenTable, Table<DoubleArray> previousCenTable,
@@ -225,6 +229,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
 
     /**
      * Lets calculate the error
+     *
      * @param conf configuration
      * @throws IOException error
      */
@@ -277,6 +282,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     /**
      * Calculate the new centroids  by deviding each value by the number of points assigned to
      * that centroid
+     *
      * @param cenTable centroid table
      */
     private void calculateCentroids(Table<DoubleArray> cenTable) {
@@ -361,6 +367,38 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
         return data;
     }
 
+    // load data form RCV1v2
+    private ArrayList<DoubleArray> loadRcv1v2Data(
+            List<String> fileNames, int vectorSize,
+            Configuration conf) throws IOException {
+        ArrayList<DoubleArray> data = new ArrayList<>();
+        int k = 0;
+        for (String filename : fileNames) {
+            k++;
+            FileSystem fs = FileSystem.get(conf);
+            Path dPath = new Path(filename);
+            FSDataInputStream in = fs.open(dPath);
+            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+            String line;
+            String[] vector;
+            while ((line = br.readLine()) != null) {
+                vector = line.split("\\s+");
+                double[] aDataPoint = new double[vectorSize];
+                // starting from i = 1 to skip the line number
+                for (int i = 1; i < vector.length; i++) {
+                    String[] sub_parts = vector[i].split(":");
+                    aDataPoint[Integer.parseInt(sub_parts[0])] = Double.parseDouble(sub_parts[1]);
+                }
+                DoubleArray da = new DoubleArray(aDataPoint, 0, vectorSize);
+                data.add(da);
+            }
+            if (k == 2) {
+                break;
+            }
+        }
+        return data;
+    }
+
     // for testing
     private void printTable(Table<DoubleArray> dataTable) {
         for (Partition<DoubleArray> ap : dataTable.getPartitions()) {
@@ -376,7 +414,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     private ArrayList<DoubleArray> getRandomBatch(List<DoubleArray> fullDataSet, int batchSize) {
         Set<Integer> randomRangeNumbers = Utils.getRandomRange(0, fullDataSet.size() - 1, batchSize);
         ArrayList<DoubleArray> resultArray = new ArrayList<>();
-        for (Integer number: randomRangeNumbers) {
+        for (Integer number : randomRangeNumbers) {
             resultArray.add(fullDataSet.get(number));
         }
         return resultArray;

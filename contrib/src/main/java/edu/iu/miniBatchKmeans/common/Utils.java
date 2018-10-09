@@ -1,18 +1,18 @@
 package edu.iu.miniBatchKmeans.common;
 
+import edu.iu.mlr.Instance;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import java.io.*;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 public class Utils {
-  private final static int DATA_RANGE = 10;
+  private final static int DATA_RANGE = 1;
 
   public static void generateData(
     int numOfDataPoints, int vectorSize,

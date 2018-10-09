@@ -7,10 +7,10 @@
 #get the startup directory
 startdir=$(dirname $0)
 harproot=$(readlink -m $startdir/../../)
-bin=$harproot/contrib/target/contrib-0.1.0.jar
+bin=/Users/swithana/git/personal/harp/contrib/target/contrib-0.1.0.jar
 dfsroot=/harp-test
 hdfsdatadir=$hdfsroot/km-syn/
-hdfsoutput=$hdfsroot/km/
+hdfsoutput=$hdfsroot/km
 
 if [ ! -f $bin ] ; then
     echo "harp contrib app not found at "$bin
@@ -44,7 +44,7 @@ runtest()
     	# 	[regroup-allgather]: use regroup and allgather operation to synchronize centroids 
     	# 	[broadcast-reduce]: use broadcast and reduce operation to synchronize centroids
     	# 	[push-pull]: use push and pull operation to synchronize centroids
-    hadoop jar $bin edu.iu.kmeans.common.KmeansMapCollective 1000 10 10 1 100 $1 /tmp/kmeans $2
+    hadoop jar $bin edu.iu.kmeans.common.KmeansMapCollective 1000 8 47237 1 100 $1 /harp-test/km/allreduce/data $2
     
     if [ $? -ne 0 ]; then
         echo "run km failure"
@@ -71,7 +71,7 @@ runtest()
 #hadoop jar $bin edu.iu.kmeans.common.KmeansMapCollective 1000 10 10 2 100 $hdfsoutput/regroup /tmp/kmeans regroup-allgather
 #hadoop jar $bin edu.iu.kmeans.common.KmeansMapCollective 1000 10 10 2 100 $hdfsoutput/broadcast /tmp/kmeans broadcast-reduce
 #hadoop jar $bin edu.iu.kmeans.common.KmeansMapCollective 1000 10 10 2 100 $hdfsoutput/pushpull /tmp/kmeans push-pull
-runtest $hdfsoutput/allreduce allreduce
+runtest /harp-test/km/allreduce allreduce
 #runtest $hdfsoutput/regroup regroup-allgather
 #runtest $hdfsoutput/broadcast broadcast-reduce
 #runtest $hdfsoutput/pushpull push-pull
