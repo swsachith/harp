@@ -91,15 +91,11 @@ public class MiniBatchKmeansMapCollective
     }
     fs.mkdirs(outDir);
 
-    System.out.println("Generate data.");
-    Utils.generateData(numOfDataPoints,
-      sizeOfVector, numMapTasks, fs, localDir,
-      dataDir);
+    //System.out.println("Generate data.");
+//    Utils.generateData(numOfDataPoints, sizeOfVector, numMapTasks, fs, localDir, dataDir);
 
     int JobID = 0;
-    Utils.generateInitialCentroids(numCentroids,
-      sizeOfVector, configuration, cenDir, fs,
-      JobID);
+    //Utils.generateInitialCentroids(numCentroids, sizeOfVector, configuration, cenDir, fs, JobID);
 
     long startTime = System.currentTimeMillis();
 
@@ -220,6 +216,9 @@ public class MiniBatchKmeansMapCollective
     if (operation.equalsIgnoreCase("allreduce")) {
       job.setMapperClass(
         edu.iu.miniBatchKmeans.allreduce.MiniBatchKmeansMapper.class);
+    } else if (operation.equalsIgnoreCase("randomFile")) {
+      job.setMapperClass(
+        edu.iu.miniBatchKmeans.allreduce.RandomFileMBKmeansMapper.class);
     } else {// by default, allreduce
       job.setMapperClass(
         edu.iu.miniBatchKmeans.allreduce.MiniBatchKmeansMapper.class);
