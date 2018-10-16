@@ -15,4 +15,5 @@ public class MiniBatchKMeansConstants {
             "num_mappers";
     public static final String CENTROID_FILE_PREFIX =
             "centroids_";
+    public static final String NUM_THREADS = "num_threads";
 }

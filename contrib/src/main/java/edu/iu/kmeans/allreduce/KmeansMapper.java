@@ -8,8 +8,12 @@ import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.LinkedList;
 import java.util.List;
 
+import edu.iu.harp.schdynamic.DynamicScheduler;
+import edu.iu.kmeans.common.CenCalcTask;
+import edu.iu.kmeans.common.Utils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -40,6 +44,7 @@ public class KmeansMapper extends CollectiveMapper<String, String, Object, Objec
   // number of points
   private int numPoints;
   private double MSE;
+  private int numThreads;
 
   /**
    * This is the initialization function of the K-Means Mapper. Here we can read the parameters
@@ -55,6 +60,7 @@ public class KmeansMapper extends CollectiveMapper<String, String, Object, Objec
     Configuration configuration = context.getConfiguration();
     dimension = configuration.getInt(KMeansConstants.VECTOR_SIZE, 20);
     iteration = configuration.getInt(KMeansConstants.NUM_ITERATONS, 1);
+    numThreads = configuration.getInt(KMeansConstants.NUM_THREADS, 1);
     long endTime = System.currentTimeMillis();
     LOG.info("config done (ms) :" + (endTime - startTime));
   }
@@ -123,8 +129,7 @@ public class KmeansMapper extends CollectiveMapper<String, String, Object, Objec
 
       // compute new partial centroid table using
       // previousCenTable and data points
-      MSE = computation(cenTable, previousCenTable,
-          dataPoints);
+      MSE = Utils.computationMultiThdDynamic(cenTable, previousCenTable, dataPoints, numThreads, dimension);
 
       // AllReduce;
       allreduce("main", "allreduce_" + iter,

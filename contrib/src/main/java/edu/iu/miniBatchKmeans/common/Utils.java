@@ -1,33 +1,37 @@
 package edu.iu.miniBatchKmeans.common;
 
+import edu.iu.harp.partition.Partition;
+import edu.iu.harp.partition.Table;
+import edu.iu.harp.resource.DoubleArray;
+import edu.iu.harp.schdynamic.DynamicScheduler;
+import edu.iu.kmeans.common.CenCalcTask;
+import edu.iu.kmeans.common.KMeansConstants;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import java.io.*;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 public class Utils {
   private final static int DATA_RANGE = 10;
 
   public static void generateData(
-    int numOfDataPoints, int vectorSize,
-    int numMapTasks, FileSystem fs,
-    String localDirStr, Path dataDir)
-    throws IOException, InterruptedException,
-    ExecutionException {
+          int numOfDataPoints, int vectorSize,
+          int numMapTasks, FileSystem fs,
+          String localDirStr, Path dataDir)
+          throws IOException, InterruptedException,
+          ExecutionException {
     int numOfpointFiles = numMapTasks;
     int pointsPerFile =
-      numOfDataPoints / numOfpointFiles;
+            numOfDataPoints / numOfpointFiles;
     int pointsRemainder =
-      numOfDataPoints % numOfpointFiles;
+            numOfDataPoints % numOfpointFiles;
     System.out.println("Writing "
-      + numOfDataPoints + " vectors to "
-      + numMapTasks + " file evenly");
+            + numOfDataPoints + " vectors to "
+            + numMapTasks + " file evenly");
 
     // Check data directory
     if (fs.exists(dataDir)) {
@@ -37,7 +41,7 @@ public class Utils {
     File localDir = new File(localDirStr);
     // If existed, regenerate data
     if (localDir.exists()
-      && localDir.isDirectory()) {
+            && localDir.isDirectory()) {
       for (File file : localDir.listFiles()) {
         file.delete();
       }
@@ -47,7 +51,7 @@ public class Utils {
     boolean success = localDir.mkdir();
     if (success) {
       System.out.println(
-        "Directory: " + localDirStr + " created");
+              "Directory: " + localDirStr + " created");
     }
     if (pointsPerFile == 0) {
       throw new IOException("No point to write.");
@@ -60,11 +64,11 @@ public class Utils {
       try {
         String filename = Integer.toString(k);
         File file = new File(localDirStr
-          + File.separator + "data_" + filename);
+                + File.separator + "data_" + filename);
         FileWriter fw =
-          new FileWriter(file.getAbsoluteFile());
+                new FileWriter(file.getAbsoluteFile());
         BufferedWriter bw =
-          new BufferedWriter(fw);
+                new BufferedWriter(fw);
 
         if (pointsRemainder > 0) {
           hasRemainder = 1;
@@ -73,12 +77,12 @@ public class Utils {
           hasRemainder = 0;
         }
         int pointsForThisFile =
-          pointsPerFile + hasRemainder;
+                pointsPerFile + hasRemainder;
         for (int i =
-          0; i < pointsForThisFile; i++) {
+             0; i < pointsForThisFile; i++) {
           for (int j = 0; j < vectorSize; j++) {
             point =
-              random.nextDouble() * DATA_RANGE;
+                    random.nextDouble() * DATA_RANGE;
             // System.out.println(point+"\t");
             if (j == vectorSize - 1) {
               bw.write(point + "");
@@ -90,8 +94,8 @@ public class Utils {
         }
         bw.close();
         System.out.println(
-          "Done written" + pointsForThisFile
-            + "points" + "to file " + filename);
+                "Done written" + pointsForThisFile
+                        + "points" + "to file " + filename);
       } catch (FileNotFoundException e) {
         e.printStackTrace();
       } catch (IOException e) {
@@ -104,17 +108,17 @@ public class Utils {
   }
 
   public static void generateInitialCentroids(
-    int numCentroids, int vectorSize,
-    Configuration configuration, Path cDir,
-    FileSystem fs, int JobID) throws IOException {
+          int numCentroids, int vectorSize,
+          Configuration configuration, Path cDir,
+          FileSystem fs, int JobID) throws IOException {
     Random random = new Random();
     double[] data = null;
     if (fs.exists(cDir))
       fs.delete(cDir, true);
     if (!fs.mkdirs(cDir)) {
       throw new IOException(
-        "Mkdirs failed to create "
-          + cDir.toString());
+              "Mkdirs failed to create "
+                      + cDir.toString());
     }
 
     data = new double[numCentroids * vectorSize];
@@ -122,15 +126,15 @@ public class Utils {
       data[i] = random.nextDouble() * DATA_RANGE;
     }
     Path initClustersFile = new Path(cDir,
-      MiniBatchKMeansConstants.CENTROID_FILE_PREFIX
-        + JobID);
+            KMeansConstants.CENTROID_FILE_PREFIX
+                    + JobID);
     System.out.println("Generate centroid data."
-      + initClustersFile.toString());
+            + initClustersFile.toString());
 
     FSDataOutputStream out =
-      fs.create(initClustersFile, true);
+            fs.create(initClustersFile, true);
     BufferedWriter bw = new BufferedWriter(
-      new OutputStreamWriter(out));
+            new OutputStreamWriter(out));
     for (int i = 0; i < data.length; i++) {
       if ((i % vectorSize) == (vectorSize - 1)) {
         bw.write(data[i] + "");
@@ -145,7 +149,59 @@ public class Utils {
     // out.sync();
     // out.close();
     System.out
-      .println("Wrote centroids data to file");
+            .println("Wrote centroids data to file");
+  }
+  public static double computationMultiThdDynamic(Table<DoubleArray> cenTable, Table<DoubleArray> previousCenTable,
+                                                  ArrayList<DoubleArray> dataPoints, int threadNum, int vectorSize)
+  {
+    double err = 0;
+    // create the task executor
+    List<edu.iu.kmeans.common.CenCalcTask> taskExecutor = new LinkedList<>();
+    for(int i=0;i<threadNum;i++)
+      taskExecutor.add(new edu.iu.kmeans.common.CenCalcTask(previousCenTable, vectorSize));
+
+    // create the static scheduler
+    DynamicScheduler<double[], Integer, CenCalcTask> calcScheduler = new DynamicScheduler<>(taskExecutor);
+
+    // launching the scheduler
+    calcScheduler.start();
+
+    // feed the scheduler with tasks
+    for(int i=0;i<dataPoints.size();i++)
+      calcScheduler.submit(dataPoints.get(i).get());
+
+    // wait until all of the tasks finished
+    for(int i=0;i<threadNum;i++)
+    {
+      while(calcScheduler.hasOutput())
+        calcScheduler.waitForOutput();
+    }
+
+    // update the new centroid table
+    for(int i=0;i<threadNum;i++)
+    {
+      // adds up all error
+      err += taskExecutor.get(i).getError();
+      Table<DoubleArray> pts_assign_sum = taskExecutor.get(i).getPtsAssignSum();
+
+      for(Partition<DoubleArray> par : pts_assign_sum.getPartitions())
+      {
+        if (cenTable.getPartition(par.id()) != null)
+        {
+          double[] newCentroids = cenTable.getPartition(par.id()).get().get();
+          for(int k=0;k<vectorSize+1;k++)
+            newCentroids[k] += par.get().get()[k];
+        }
+        else
+        {
+          cenTable.addPartition(new Partition<>(par.id(),
+                  new DoubleArray(par.get().get(), 0, vectorSize+1)));
+        }
+
+      }
+
+    }
+    return err;
   }
 
   public static Set<Integer> getRandomRange(int min, int max, int batchSize) {

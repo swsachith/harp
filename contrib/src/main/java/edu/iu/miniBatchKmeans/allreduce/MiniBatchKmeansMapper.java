@@ -43,6 +43,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     private int numPoints;
     // batch size of the mini-batch
     private int batchSize;
+    private int numThreads;
     private double MSE;
 
     /**
@@ -59,6 +60,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
         Configuration configuration = context.getConfiguration();
         dimension = configuration.getInt(MiniBatchKMeansConstants.VECTOR_SIZE, 20);
         iteration = configuration.getInt(MiniBatchKMeansConstants.NUM_ITERATONS, 1);
+        numThreads = configuration.getInt(MiniBatchKMeansConstants.NUM_THREADS, 1);
         batchSize = configuration.getInt(MiniBatchKMeansConstants.BATCH_SIZE, 1000);
         long endTime = System.currentTimeMillis();
         LOG.info("config done (ms) :" + (endTime - startTime));
@@ -121,8 +123,6 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
         Table<DoubleArray> previousCenTable;
         // iterations
         for (int iter = 0; iter < iteration; iter++) {
-            // Todo: randomize the data reading from files
-            // Todo: read the batch from all the files
             ArrayList<DoubleArray> dataPoints = getRandomBatch(fullDataPoints, batchSize);
 
             previousCenTable = cenTable;
@@ -132,8 +132,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
 
             // compute new partial centroid table using
             // previousCenTable and data points
-            MSE = computation(cenTable, previousCenTable,
-                    dataPoints);
+            MSE = Utils.computationMultiThdDynamic(cenTable, previousCenTable, dataPoints, numThreads, dimension);
 
             // AllReduce;
             allreduce("main", "allreduce_" + iter,

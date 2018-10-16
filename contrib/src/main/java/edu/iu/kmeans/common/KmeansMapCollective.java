@@ -21,6 +21,9 @@ import edu.iu.fileformat.MultiFileInputFormat;
 public class KmeansMapCollective
   extends Configured implements Tool {
 
+  // memory allocated to each mapper (default value: 2 GB)
+  private int mem_per_mapper = 2000;
+
   public static void main(String[] argv)
     throws Exception {
     int res = ToolRunner.run(new Configuration(),
@@ -30,32 +33,37 @@ public class KmeansMapCollective
 
   @Override
   public int run(String[] args) throws Exception {
-    if (args.length < 7) {
+    if (args.length < 9) {
       System.err.println(
-        "Usage: KmeansMapCollective <numOfDataPoints> <num of Centroids> "
-          + "<size of vector> <number of map tasks> <number of iteration> <workDir> <localDir> <communication operation>\n"
-          + "<communication operation> includes:\n  "
-          + "[allreduce]: use allreduce operation to synchronize centroids \n"
-          + "[regroup-allgather]: use regroup and allgather operation to synchronize centroids \n"
-          + "[broadcast-reduce]: use broadcast and reduce operation to synchronize centroids \n"
-          + "[push-pull]: use push and pull operation to synchronize centroids\n");
+              "Usage: KmeansMapCollective <numOfDataPoints> <num of Centroids> "
+                      + "<size of vector> <number of map tasks> <number of threads> <number of iteration> <workDir> <localDir> <communication operation> <mem per mapper>\n"
+                      + "<communication operation> includes:\n  "
+                      + "[allreduce]: use allreduce operation to synchronize centroids \n"
+                      + "[regroup-allgather]: use regroup and allgather operation to synchronize centroids \n"
+                      + "[broadcast-reduce]: use broadcast and reduce operation to synchronize centroids \n"
+                      + "[push-pull]: use push and pull operation to synchronize centroids\n"
+                      + "<mem per mapper>\n");
       ToolRunner
-        .printGenericCommandUsage(System.err);
+              .printGenericCommandUsage(System.err);
       return -1;
     }
 
     int numOfDataPoints =
-      Integer.parseInt(args[0]);
+            Integer.parseInt(args[0]);
     int numCentroids = Integer.parseInt(args[1]);
     int sizeOfVector = Integer.parseInt(args[2]);
     int numMapTasks = Integer.parseInt(args[3]);
-    int numIteration = Integer.parseInt(args[4]);
-    String workDir = args[5];
-    String localDir = args[6];
-    String operation = args[7];
+    int numThreads = Integer.parseInt(args[4]);
+    int numIteration = Integer.parseInt(args[5]);
+    String workDir = args[6];
+    String localDir = args[7];
+    String operation = args[8];
+
+    if (args.length > 9)
+      this.mem_per_mapper = Integer.parseInt(args[9]);
 
     System.out.println(
-      "Number of Map Tasks = " + numMapTasks);
+            "Number of Map Tasks = " + numMapTasks);
     System.out.println("Len : " + args.length);
     System.out.println("Args=:");
     for (String arg : args) {
@@ -64,26 +72,26 @@ public class KmeansMapCollective
     System.out.println();
 
     launch(numOfDataPoints, numCentroids,
-      sizeOfVector, numMapTasks, numIteration,
-      workDir, localDir, operation);
+            sizeOfVector, numMapTasks, numThreads, numIteration,
+            workDir, localDir, operation);
     System.out.println("HarpKmeans Completed");
     return 0;
   }
 
   void launch(int numOfDataPoints,
-    int numCentroids, int sizeOfVector,
-    int numMapTasks, int numIteration,
-    String workDir, String localDir,
-    String operation) throws IOException,
-    URISyntaxException, InterruptedException,
-    ExecutionException, ClassNotFoundException {
+              int numCentroids, int sizeOfVector,
+              int numMapTasks, int numThreads, int numIteration,
+              String workDir, String localDir,
+              String operation) throws IOException,
+          URISyntaxException, InterruptedException,
+          ExecutionException, ClassNotFoundException {
 
     Configuration configuration = getConf();
     Path workDirPath = new Path(workDir);
     FileSystem fs = FileSystem.get(configuration);
     Path dataDir = new Path(workDirPath, "data");
     Path cenDir =
-      new Path(workDirPath, "centroids");
+            new Path(workDirPath, "centroids");
     Path outDir = new Path(workDirPath, "out");
     if (fs.exists(outDir)) {
       fs.delete(outDir, true);
@@ -103,23 +111,24 @@ public class KmeansMapCollective
     long startTime = System.currentTimeMillis();
 
     runKMeans(numOfDataPoints, numCentroids,
-      sizeOfVector, numIteration, JobID,
-      numMapTasks, configuration, workDirPath,
-      dataDir, cenDir, outDir, operation);
+            sizeOfVector, numIteration, JobID,
+            numMapTasks, numThreads, configuration, workDirPath,
+            dataDir, cenDir, outDir, operation);
     long endTime = System.currentTimeMillis();
     System.out
-      .println("Total K-means Execution Time: "
-        + (endTime - startTime));
+            .println("Total K-means Execution Time: "
+                    + (endTime - startTime));
   }
 
   private void runKMeans(int numOfDataPoints,
-    int numCentroids, int vectorSize,
-    int numIterations, int JobID, int numMapTasks,
-    Configuration configuration, Path workDirPath,
-    Path dataDir, Path cDir, Path outDir,
-    String operation)
-    throws IOException, URISyntaxException,
-    InterruptedException, ClassNotFoundException {
+                         int numCentroids, int vectorSize,
+                         int numIterations, int JobID, int numMapTasks,
+                         int numThreads,
+                         Configuration configuration, Path workDirPath,
+                         Path dataDir, Path cDir, Path outDir,
+                         String operation)
+          throws IOException, URISyntaxException,
+          InterruptedException, ClassNotFoundException {
 
     System.out.println("Starting Job");
     long jobSubmitTime;
@@ -130,43 +139,43 @@ public class KmeansMapCollective
       // ----------------------------------------------------------------------
       jobSubmitTime = System.currentTimeMillis();
       System.out
-        .println("Start Job#" + JobID + " "
-          + new SimpleDateFormat("HH:mm:ss.SSS")
-            .format(
-              Calendar.getInstance().getTime()));
+              .println("Start Job#" + JobID + " "
+                      + new SimpleDateFormat("HH:mm:ss.SSS")
+                      .format(
+                              Calendar.getInstance().getTime()));
 
       Job kmeansJob = configureKMeansJob(
-        numOfDataPoints, numCentroids, vectorSize,
-        numMapTasks, configuration, workDirPath,
-        dataDir, cDir, outDir, JobID,
-        numIterations, operation);
+              numOfDataPoints, numCentroids, vectorSize,
+              numMapTasks, numThreads, configuration, workDirPath,
+              dataDir, cDir, outDir, JobID,
+              numIterations, operation);
 
       System.out
-        .println(
-          "| Job#" + JobID + " configure in "
-            + (System.currentTimeMillis()
-              - jobSubmitTime)
-            + " miliseconds |");
+              .println(
+                      "| Job#" + JobID + " configure in "
+                              + (System.currentTimeMillis()
+                              - jobSubmitTime)
+                              + " miliseconds |");
 
       // ----------------------------------------------------------
       jobSuccess =
-        kmeansJob.waitForCompletion(true);
+              kmeansJob.waitForCompletion(true);
 
       System.out.println("end Jod#" + JobID + " "
-        + new SimpleDateFormat("HH:mm:ss.SSS")
-          .format(
-            Calendar.getInstance().getTime()));
+              + new SimpleDateFormat("HH:mm:ss.SSS")
+              .format(
+                      Calendar.getInstance().getTime()));
       System.out
-        .println(
-          "| Job#" + JobID + " Finished in "
-            + (System.currentTimeMillis()
-              - jobSubmitTime)
-            + " miliseconds |");
+              .println(
+                      "| Job#" + JobID + " Finished in "
+                              + (System.currentTimeMillis()
+                              - jobSubmitTime)
+                              + " miliseconds |");
 
       // ---------------------------------------------------------
       if (!jobSuccess) {
         System.out.println(
-          "KMeans Job failed. Job ID:" + JobID);
+                "KMeans Job failed. Job ID:" + JobID);
         jobRetryCount++;
         if (jobRetryCount == 3) {
           break;
@@ -178,92 +187,97 @@ public class KmeansMapCollective
   }
 
   private Job configureKMeansJob(
-    int numOfDataPoints, int numCentroids,
-    int vectorSize, int numMapTasks,
-    Configuration configuration, Path workDirPath,
-    Path dataDir, Path cDir, Path outDir,
-    int jobID, int numIterations,
-    String operation)
-    throws IOException, URISyntaxException {
+          int numOfDataPoints, int numCentroids,
+          int vectorSize, int numMapTasks, int numThreads,
+          Configuration configuration, Path workDirPath,
+          Path dataDir, Path cDir, Path outDir,
+          int jobID, int numIterations,
+          String operation)
+          throws IOException, URISyntaxException {
 
     Job job = Job.getInstance(configuration,
-      "kmeans_job_" + jobID);
+            "kmeans_job_" + jobID);
     Configuration jobConfig =
-      job.getConfiguration();
+            job.getConfiguration();
     Path jobOutDir =
-      new Path(outDir, "kmeans_out_" + jobID);
+            new Path(outDir, "kmeans_out_" + jobID);
     FileSystem fs = FileSystem.get(configuration);
     if (fs.exists(jobOutDir)) {
       fs.delete(jobOutDir, true);
     }
     FileInputFormat.setInputPaths(job, dataDir);
     FileOutputFormat.setOutputPath(job,
-      jobOutDir);
+            jobOutDir);
 
     Path cFile = new Path(cDir,
-      KMeansConstants.CENTROID_FILE_PREFIX
-        + jobID);
+            KMeansConstants.CENTROID_FILE_PREFIX
+                    + jobID);
     System.out.println(
-      "Centroid File Path: " + cFile.toString());
+            "Centroid File Path: " + cFile.toString());
     jobConfig.set(KMeansConstants.CFILE,
-      cFile.toString());
+            cFile.toString());
     jobConfig.setInt(KMeansConstants.JOB_ID,
-      jobID);
+            jobID);
     jobConfig.setInt(
-      KMeansConstants.NUM_ITERATONS,
-      numIterations);
+            KMeansConstants.NUM_ITERATONS,
+            numIterations);
+
+    jobConfig.setInt(
+            KMeansConstants.NUM_THREADS,
+            numThreads);
+
     job.setInputFormatClass(
-      MultiFileInputFormat.class);
+            MultiFileInputFormat.class);
     job.setJarByClass(KmeansMapCollective.class);
 
     // use different kinds of mappers
     if (operation.equalsIgnoreCase("allreduce")) {
       job.setMapperClass(
-        edu.iu.kmeans.allreduce.KmeansMapper.class);
+              edu.iu.kmeans.allreduce.KmeansMapper.class);
     } else if (operation
-      .equalsIgnoreCase("regroup-allgather")) {
+            .equalsIgnoreCase("regroup-allgather")) {
       job.setMapperClass(
-        edu.iu.kmeans.regroupallgather.KmeansMapper.class);
+              edu.iu.kmeans.regroupallgather.KmeansMapper.class);
     } else if (operation
-      .equalsIgnoreCase("broadcast-reduce")) {
+            .equalsIgnoreCase("broadcast-reduce")) {
       job.setMapperClass(
-        edu.iu.kmeans.bcastreduce.KmeansMapper.class);
+              edu.iu.kmeans.bcastreduce.KmeansMapper.class);
     } else if (operation
-      .equalsIgnoreCase("push-pull")) {
+            .equalsIgnoreCase("push-pull")) {
       job.setMapperClass(
-        edu.iu.kmeans.pushpull.KmeansMapper.class);
+              edu.iu.kmeans.pushpull.KmeansMapper.class);
     } else {// by default, allreduce
       job.setMapperClass(
-        edu.iu.kmeans.allreduce.KmeansMapper.class);
+              edu.iu.kmeans.allreduce.KmeansMapper.class);
     }
 
     JobConf jobConf =
-      (JobConf) job.getConfiguration();
+            (JobConf) job.getConfiguration();
     jobConf.set("mapreduce.framework.name",
-      "map-collective");
+            "map-collective");
     jobConf.setNumMapTasks(numMapTasks);
     jobConf.setInt(
-      "mapreduce.job.max.split.locations", 10000);
+            "mapreduce.job.max.split.locations", 10000);
     job.setNumReduceTasks(0);
     jobConfig.setInt(KMeansConstants.VECTOR_SIZE,
-      vectorSize);
+            vectorSize);
     jobConfig.setInt(
-      KMeansConstants.NUM_CENTROIDS,
-      numCentroids);
+            KMeansConstants.NUM_CENTROIDS,
+            numCentroids);
     jobConfig.set(KMeansConstants.WORK_DIR,
-      workDirPath.toString());
+            workDirPath.toString());
     jobConfig.setInt(KMeansConstants.NUM_MAPPERS,
-      numMapTasks);
+            numMapTasks);
 
-	jobConf.setInt(
-      "mapreduce.map.collective.memory.mb", 1024);
+    jobConf.setInt(
+            "mapreduce.map.collective.memory.mb", this.mem_per_mapper);
     // mapreduce.map.collective.java.opts
-    int xmx = (int) Math.ceil((1024)*0.5);
+    int xmx = (int) Math.ceil((this.mem_per_mapper)*0.8);
     int xmn = (int) Math.ceil(0.25 * xmx);
     jobConf.set(
-      "mapreduce.map.collective.java.opts",
-      "-Xmx" + xmx + "m -Xms" + xmx + "m"
-        + " -Xmn" + xmn + "m");
+            "mapreduce.map.collective.java.opts",
+            "-Xmx" + xmx + "m -Xms" + xmx + "m"
+                    + " -Xmn" + xmn + "m");
     return job;
   }
 

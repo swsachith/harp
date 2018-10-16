@@ -21,6 +21,9 @@ import java.util.concurrent.ExecutionException;
 public class MiniBatchKmeansMapCollective
   extends Configured implements Tool {
 
+  // memory allocated to each mapper (default value: 2 GB)
+  private int mem_per_mapper = 2000;
+
   public static void main(String[] argv)
     throws Exception {
     int res = ToolRunner.run(new Configuration(),
@@ -30,10 +33,10 @@ public class MiniBatchKmeansMapCollective
 
   @Override
   public int run(String[] args) throws Exception {
-    if (args.length < 8) {
+    if (args.length < 10) {
       System.err.println(
         "Usage: MiniBatchKmeansMapCollective <numOfDataPoints> <num of Centroids> "
-          + "<size of vector> <number of map tasks> <number of iteration> <workDir> <localDir> <communication operation> <batchSize>\n"
+          + "<size of vector> <number of map tasks> <number of threads><number of iteration> <workDir> <localDir> <communication operation> <batchSize>\n"
           + "<communication operation> includes:\n  "
           + "[allreduce]: use allreduce operation to synchronize centroids \n"
           + "[regroup-allgather]: use regroup and allgather operation to synchronize centroids \n"
@@ -49,11 +52,15 @@ public class MiniBatchKmeansMapCollective
     int numCentroids = Integer.parseInt(args[1]);
     int sizeOfVector = Integer.parseInt(args[2]);
     int numMapTasks = Integer.parseInt(args[3]);
-    int numIteration = Integer.parseInt(args[4]);
-    String workDir = args[5];
-    String localDir = args[6];
-    String operation = args[7];
-    int batchSize = Integer.parseInt(args[8]);
+    int numThreads = Integer.parseInt(args[4]);
+    int numIteration = Integer.parseInt(args[5]);
+    String workDir = args[6];
+    String localDir = args[7];
+    String operation = args[8];
+    int batchSize = Integer.parseInt(args[9]);
+
+    if (args.length > 10)
+      this.mem_per_mapper = Integer.parseInt(args[9]);
 
     System.out.println(
       "Number of Map Tasks = " + numMapTasks);
@@ -65,7 +72,7 @@ public class MiniBatchKmeansMapCollective
     System.out.println();
 
     launch(numOfDataPoints, numCentroids,
-      sizeOfVector, numMapTasks, numIteration,
+      sizeOfVector, numMapTasks, numThreads, numIteration,
       workDir, localDir, operation, batchSize);
     System.out.println("HarpKmeans Completed");
     return 0;
@@ -73,7 +80,7 @@ public class MiniBatchKmeansMapCollective
 
   void launch(int numOfDataPoints,
     int numCentroids, int sizeOfVector,
-    int numMapTasks, int numIteration,
+    int numMapTasks, int numThreads, int numIteration,
     String workDir, String localDir,
     String operation, int batchSize) throws IOException,
     URISyntaxException, InterruptedException,
@@ -101,7 +108,7 @@ public class MiniBatchKmeansMapCollective
 
     runKMeans(numOfDataPoints, numCentroids,
       sizeOfVector, numIteration, JobID,
-      numMapTasks, configuration, workDirPath,
+      numMapTasks, numThreads, configuration, workDirPath,
       dataDir, cenDir, outDir, operation, batchSize);
     long endTime = System.currentTimeMillis();
     System.out
@@ -111,7 +118,7 @@ public class MiniBatchKmeansMapCollective
 
   private void runKMeans(int numOfDataPoints,
     int numCentroids, int vectorSize,
-    int numIterations, int JobID, int numMapTasks,
+    int numIterations, int JobID, int numMapTasks, int numThreads,
     Configuration configuration, Path workDirPath,
     Path dataDir, Path cDir, Path outDir,
     String operation, int batchSize)
@@ -134,7 +141,7 @@ public class MiniBatchKmeansMapCollective
 
       Job kmeansJob = configureKMeansJob(
         numOfDataPoints, numCentroids, vectorSize,
-        numMapTasks, configuration, workDirPath,
+        numMapTasks, numThreads, configuration, workDirPath,
         dataDir, cDir, outDir, JobID,
         numIterations, operation, batchSize);
 
@@ -176,7 +183,7 @@ public class MiniBatchKmeansMapCollective
 
   private Job configureKMeansJob(
     int numOfDataPoints, int numCentroids,
-    int vectorSize, int numMapTasks,
+    int vectorSize, int numMapTasks, int numThreads,
     Configuration configuration, Path workDirPath,
     Path dataDir, Path cDir, Path outDir,
     int jobID, int numIterations,
@@ -207,6 +214,7 @@ public class MiniBatchKmeansMapCollective
     jobConfig.setInt(MiniBatchKMeansConstants.JOB_ID,
       jobID);
     jobConfig.setInt(MiniBatchKMeansConstants.NUM_ITERATONS, numIterations);
+    jobConfig.setInt(MiniBatchKMeansConstants.NUM_THREADS, numThreads);
     jobConfig.setInt(MiniBatchKMeansConstants.BATCH_SIZE, batchSize);
     job.setInputFormatClass(
       MultiFileInputFormat.class);
@@ -242,15 +250,15 @@ public class MiniBatchKmeansMapCollective
     jobConfig.setInt(MiniBatchKMeansConstants.NUM_MAPPERS,
       numMapTasks);
 
-	jobConf.setInt(
-      "mapreduce.map.collective.memory.mb", 1024);
+    jobConf.setInt(
+            "mapreduce.map.collective.memory.mb", this.mem_per_mapper);
     // mapreduce.map.collective.java.opts
-    int xmx = (int) Math.ceil((1024)*0.5);
+    int xmx = (int) Math.ceil((this.mem_per_mapper)*0.8);
     int xmn = (int) Math.ceil(0.25 * xmx);
     jobConf.set(
-      "mapreduce.map.collective.java.opts",
-      "-Xmx" + xmx + "m -Xms" + xmx + "m"
-        + " -Xmn" + xmn + "m");
+            "mapreduce.map.collective.java.opts",
+            "-Xmx" + xmx + "m -Xms" + xmx + "m"
+                    + " -Xmn" + xmn + "m");
     return job;
   }
 

@@ -44,6 +44,7 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
     private int numPoints;
     // batch size of the mini-batch
     private int batchSize;
+    private int numThreads;
     private double MSE;
 
     /**
@@ -60,6 +61,7 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
         Configuration configuration = context.getConfiguration();
         dimension = configuration.getInt(MiniBatchKMeansConstants.VECTOR_SIZE, 20);
         iteration = configuration.getInt(MiniBatchKMeansConstants.NUM_ITERATONS, 1);
+        numThreads = configuration.getInt(MiniBatchKMeansConstants.NUM_THREADS, 1);
         batchSize = configuration.getInt(MiniBatchKMeansConstants.BATCH_SIZE, 1000);
         long endTime = System.currentTimeMillis();
         LOG.info("config done (ms) :" + (endTime - startTime));
@@ -115,6 +117,8 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
         LOG.info("After brodcasting centroids");
         printTable(cenTable);
 
+        // load data
+        ArrayList<DoubleArray> fullDataPoints = loadData(fileNames, dimension, conf);
         numPoints = batchSize;
 
         Table<DoubleArray> previousCenTable;
@@ -132,8 +136,7 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
 
             // compute new partial centroid table using
             // previousCenTable and data points
-            MSE = computation(cenTable, previousCenTable,
-                    dataPoints);
+            MSE = Utils.computationMultiThdDynamic(cenTable, previousCenTable, dataPoints, numThreads, dimension);
 
             // AllReduce;
             allreduce("main", "allreduce_" + iter,

@@ -6,7 +6,7 @@
 
 #get the startup directory
 startdir=$(dirname $0)
-harproot=$(readlink -m $startdir/../../)
+harproot=/Users/swithana/git/personal/harp
 bin=$harproot/contrib/target/contrib-0.1.0.jar
 dfsroot=/harp-test
 hdfsdatadir=$hdfsroot/km-syn/
@@ -36,6 +36,7 @@ runtest()
        # <num of centriods>: the number of centroids you want to clustering the data to
        # <size of vector>: the number of dimension of the data
        # <number of map tasks>: number of map tasks
+       # <number of threads>: number of threads per task
        # <number of iteration>: the number of iterations to run
        # <work dir>: the root directory for this running in HDFS
        # <local dir>: the harp kmeans will firstly generate files which contain data points to local directory. Set this argument to determine the local directory.
@@ -44,8 +45,8 @@ runtest()
     	# 	[regroup-allgather]: use regroup and allgather operation to synchronize centroids 
     	# 	[broadcast-reduce]: use broadcast and reduce operation to synchronize centroids
     	# 	[push-pull]: use push and pull operation to synchronize centroids
-    hadoop jar $bin edu.iu.kmeans.common.KmeansMapCollective 1000000 10 100 1 100 $1 /tmp/kmeans $2
-    
+    hadoop jar $bin edu.iu.kmeans.common.KmeansMapCollective 1000000 10 100 1 4 100 $1 /tmp/kmeans $2
+
     if [ $? -ne 0 ]; then
         echo "run km failure"
         exit -1

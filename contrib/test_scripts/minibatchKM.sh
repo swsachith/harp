@@ -6,7 +6,7 @@
 
 #get the startup directory
 startdir=$(dirname $0)
-harproot=$(readlink -m $startdir/../../)
+harproot=/Users/swithana/git/personal/harp
 bin=$harproot/contrib/target/contrib-0.1.0.jar
 hdfsroot=/harp-test
 hdfsdatadir=$hdfsroot/km-syn/
@@ -47,7 +47,7 @@ runtest()
     	# 	[regroup-allgather]: use regroup and allgather operation to synchronize centroids 
     	# 	[broadcast-reduce]: use broadcast and reduce operation to synchronize centroids
     	# 	[push-pull]: use push and pull operation to synchronize centroids
-    hadoop jar $bin $className 1000000 10 100 1 100 $1 /tmp/kmeans $2 $3
+    hadoop jar $bin $className 1000000 10 100 1 2 100 $1 /tmp/kmeans $2 $3
     
     if [ $? -ne 0 ]; then
         echo "run km failure"
