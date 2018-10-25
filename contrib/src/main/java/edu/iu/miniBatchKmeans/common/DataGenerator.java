@@ -7,18 +7,23 @@ public class DataGenerator {
     private final static int DATA_RANGE = 10;
 
     public static void main(String[] args) {
-        int numberOfDataPoints = 10000;
-        int featureSize = 100;
-        String dataDirectory = "/Users/swithana/projects/harp";
-        String centroidsDir = "/Users/swithana/projects/harp/centroids";
+        if (args.length < 3) {
+            System.out.println("Requres numberOfDataPoints, featureSize and dataDirectory as arguments.");
+            System.exit(0);
+        }
+
+        int numberOfDataPoints = Integer.parseInt(args[0]);
+        int featureSize = Integer.parseInt(args[1]);
+        String dataDirectory = args[2];
+
+        String centroidsDir = dataDirectory + "/centroids";
         int numberOfFiles = 1;
         try {
-//            generateData(numberOfDataPoints, featureSize, dataDirectory, numberOfFiles);
+            generateData(numberOfDataPoints, featureSize, dataDirectory, numberOfFiles);
             generateInitialCentroids(10, 100, centroidsDir);
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     public static void generateData(int numOfDataPoints, int vectorSize, String localDirStr, int numMapTasks) throws IOException{
