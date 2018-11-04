@@ -45,6 +45,8 @@ public class KmeansMapper extends CollectiveMapper<String, String, Object, Objec
   private int numPoints;
   private double MSE;
   private int numThreads;
+  private double totalComputeTime;
+  private double computeTime;
 
   /**
    * This is the initialization function of the K-Means Mapper. Here we can read the parameters
@@ -119,6 +121,8 @@ public class KmeansMapper extends CollectiveMapper<String, String, Object, Objec
     ArrayList<DoubleArray> dataPoints = loadData(fileNames, dimension, conf);
     numPoints = dataPoints.size();
 
+    computeTime = 0;
+    totalComputeTime = 0;
     Table<DoubleArray> previousCenTable;
     // iterations
     for (int iter = 0; iter < iteration; iter++) {
@@ -129,14 +133,15 @@ public class KmeansMapper extends CollectiveMapper<String, String, Object, Objec
 
       // compute new partial centroid table using
       // previousCenTable and data points
+      double startTime = System.nanoTime();
       MSE = Utils.computationMultiThdDynamic(cenTable, previousCenTable, dataPoints, numThreads, dimension);
-
+      computeTime += ((System.nanoTime() - startTime)/1000000);
       // AllReduce;
       allreduce("main", "allreduce_" + iter,
           cenTable);
       // we can calculate new centroids
       calculateCentroids(cenTable);
-
+      totalComputeTime += ((System.nanoTime() - startTime)/1000000);
       printTable(cenTable);
     }
 
@@ -249,6 +254,8 @@ public class KmeansMapper extends CollectiveMapper<String, String, Object, Objec
       FSDataOutputStream output = fs.create(path, true);
       BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output));
       writer.write("MSE : " + finalMSE + "\n");
+      writer.write("Total Compute Time (ms) : " + totalComputeTime + "\n");
+      writer.write("Compute Time (ms) : " + computeTime + "\n");
       writer.close();
     }
   }
