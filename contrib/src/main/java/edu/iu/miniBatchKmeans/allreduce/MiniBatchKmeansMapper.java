@@ -45,6 +45,8 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     private int batchSize;
     private int numThreads;
     private double MSE;
+    private double totalComputeTime;
+    private double computeTime;
 
     /**
      * This is the initialization function of the K-Means Mapper. Here we can read the parameters
@@ -121,6 +123,8 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
         numPoints = batchSize;
 
         Table<DoubleArray> previousCenTable;
+        computeTime = 0;
+        totalComputeTime = 0;
         // iterations
         for (int iter = 0; iter < iteration; iter++) {
             ArrayList<DoubleArray> dataPoints = getRandomBatch(fullDataPoints, batchSize);
@@ -130,16 +134,17 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
 
             LOG.info("Iteraton No." + iter);
 
+            double startTime = System.nanoTime();
             // compute new partial centroid table using
             // previousCenTable and data points
             MSE = Utils.computationMultiThdDynamic(cenTable, previousCenTable, dataPoints, numThreads, dimension);
-
+            computeTime += (System.nanoTime() - startTime) / 1000;
             // AllReduce;
             allreduce("main", "allreduce_" + iter,
                     cenTable);
             // we can calculate new centroids
             calculateCentroids(cenTable);
-
+            totalComputeTime += (System.nanoTime() - startTime)/1000;
             printTable(cenTable);
         }
 
@@ -252,6 +257,8 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
             FSDataOutputStream output = fs.create(path, true);
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output));
             writer.write("MSE : " + finalMSE + "\n");
+            writer.write("Total Compute Time (s) : " + totalComputeTime + "\n");
+            writer.write("Compute Time (s) : " + computeTime + "\n");
             writer.close();
         }
     }
