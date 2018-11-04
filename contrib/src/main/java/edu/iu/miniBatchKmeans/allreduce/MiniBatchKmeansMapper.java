@@ -138,13 +138,13 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
             // compute new partial centroid table using
             // previousCenTable and data points
             MSE = Utils.computationMultiThdDynamic(cenTable, previousCenTable, dataPoints, numThreads, dimension);
-            computeTime += (System.nanoTime() - startTime) / 1000;
+            computeTime += ((System.nanoTime() - startTime)/1000);
             // AllReduce;
             allreduce("main", "allreduce_" + iter,
                     cenTable);
             // we can calculate new centroids
             calculateCentroids(cenTable);
-            totalComputeTime += (System.nanoTime() - startTime)/1000;
+            totalComputeTime += ((System.nanoTime() - startTime)/1000);
             printTable(cenTable);
         }
 
