@@ -60,7 +60,7 @@ public class MiniBatchKmeansMapCollective
     int batchSize = Integer.parseInt(args[9]);
 
     if (args.length > 10)
-      this.mem_per_mapper = Integer.parseInt(args[9]);
+      this.mem_per_mapper = Integer.parseInt(args[10]);
 
     System.out.println(
       "Number of Map Tasks = " + numMapTasks);
