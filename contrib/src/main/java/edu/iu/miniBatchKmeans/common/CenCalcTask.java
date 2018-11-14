@@ -7,8 +7,9 @@ import edu.iu.harp.resource.DoubleArray;
 import edu.iu.harp.schdynamic.Task;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import java.util.List;
 
-public class CenCalcTask implements Task<double[], Integer> {
+public class CenCalcTask implements Task<List<DoubleArray>, Integer> {
 
     protected static final Log LOG = LogFactory.getLog(CenCalcTask.class);
 
@@ -47,30 +48,32 @@ public class CenCalcTask implements Task<double[], Integer> {
     }
 
     @Override
-    public Integer run(double[] aPoint) throws Exception
+    public Integer run(List<DoubleArray> dataPoints) throws Exception
     {
-        this.minDist = -1;
-        this.tempDist = 0;
-        int nearestPartitionID = -1;
+        for (DoubleArray aPoint : dataPoints) {
+            this.minDist = -1;
+            this.tempDist = 0;
+            int nearestPartitionID = -1;
 
-        for(Partition<DoubleArray> par : this.centroids.getPartitions())
-        {
-            this.tempDist = calcEucDistSquare(aPoint, par.get().get(), this.vectorSize);
-            if (this.minDist == -1 || this.tempDist < this.minDist)
+            for(Partition<DoubleArray> par : this.centroids.getPartitions())
             {
-                this.minDist = tempDist;
-                nearestPartitionID = par.id();
+                this.tempDist = calcEucDistSquare(aPoint.get(), par.get().get(), this.vectorSize);
+                if (this.minDist == -1 || this.tempDist < this.minDist)
+                {
+                    this.minDist = tempDist;
+                    nearestPartitionID = par.id();
+                }
             }
+
+            this.error += this.minDist;
+
+            // update the pts_assign_sum values
+            for(int j=0;j<this.vectorSize;j++)
+                this.pts_assign_sum.getPartition(nearestPartitionID).get().get()[j] += aPoint.get()[j];
+
+            // sum up the number of added pts
+            this.pts_assign_sum.getPartition(nearestPartitionID).get().get()[this.vectorSize] += 1;
         }
-
-        this.error += this.minDist;
-
-        // update the pts_assign_sum values
-        for(int j=0;j<this.vectorSize;j++)
-            this.pts_assign_sum.getPartition(nearestPartitionID).get().get()[j] += aPoint[j];
-
-        // sum up the number of added pts
-        this.pts_assign_sum.getPartition(nearestPartitionID).get().get()[this.vectorSize] += 1;
 
         return new Integer(0);
     }

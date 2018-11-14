@@ -4,8 +4,8 @@ import edu.iu.harp.partition.Partition;
 import edu.iu.harp.partition.Table;
 import edu.iu.harp.resource.DoubleArray;
 import edu.iu.harp.schdynamic.DynamicScheduler;
-import edu.iu.kmeans.common.CenCalcTask;
-import edu.iu.kmeans.common.KMeansConstants;
+import edu.iu.miniBatchKmeans.common.CenCalcTask;
+import edu.iu.miniBatchKmeans.common.MiniBatchKMeansConstants;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -126,7 +126,7 @@ public class Utils {
       data[i] = random.nextDouble() * DATA_RANGE;
     }
     Path initClustersFile = new Path(cDir,
-            KMeansConstants.CENTROID_FILE_PREFIX
+            MiniBatchKMeansConstants.CENTROID_FILE_PREFIX
                     + JobID);
     System.out.println("Generate centroid data."
             + initClustersFile.toString());
@@ -152,24 +152,28 @@ public class Utils {
             .println("Wrote centroids data to file");
   }
   public static double computationMultiThdDynamic(Table<DoubleArray> cenTable, Table<DoubleArray> previousCenTable,
-                                                  ArrayList<DoubleArray> dataPoints, int threadNum, int vectorSize)
+                                                  ArrayList<DoubleArray> dataPoints, int threadNum, int vectorSize, int batchSize)
   {
     double err = 0;
+    int threadDataSize = batchSize/threadNum;
     // create the task executor
-    List<edu.iu.kmeans.common.CenCalcTask> taskExecutor = new LinkedList<>();
+    List<CenCalcTask> taskExecutor = new LinkedList<>();
     for(int i=0;i<threadNum;i++)
-      taskExecutor.add(new edu.iu.kmeans.common.CenCalcTask(previousCenTable, vectorSize));
+      taskExecutor.add(new CenCalcTask(previousCenTable, vectorSize));
 
     // create the static scheduler
-    DynamicScheduler<double[], Integer, CenCalcTask> calcScheduler = new DynamicScheduler<>(taskExecutor);
+    DynamicScheduler<List<DoubleArray>, Integer, CenCalcTask> calcScheduler = new DynamicScheduler<>(taskExecutor);
 
     // launching the scheduler
     calcScheduler.start();
 
+    List<DoubleArray> dataList;
     // feed the scheduler with tasks
-    for(int i=0;i<dataPoints.size();i++)
-      calcScheduler.submit(dataPoints.get(i).get());
-
+    for(int i=0; i < dataPoints.size(); i+=threadDataSize) {
+      int endSize = ((i+threadDataSize) > dataPoints.size()) ? dataPoints.size() : (i + threadDataSize);
+      dataList = dataPoints.subList(i, endSize);
+      calcScheduler.submit(dataList);
+    }
     // wait until all of the tasks finished
     for(int i=0;i<threadNum;i++)
     {

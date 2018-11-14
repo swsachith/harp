@@ -136,7 +136,7 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
 
             // compute new partial centroid table using
             // previousCenTable and data points
-            MSE = Utils.computationMultiThdDynamic(cenTable, previousCenTable, dataPoints, numThreads, dimension);
+            MSE = Utils.computationMultiThdDynamic(cenTable, previousCenTable, dataPoints, numThreads, dimension, batchSize);
 
             // AllReduce;
             allreduce("main", "allreduce_" + iter,
