@@ -167,12 +167,10 @@ public class Utils {
     // launching the scheduler
     calcScheduler.start();
 
-    List<DoubleArray> dataList;
     // feed the scheduler with tasks
     for(int i=0; i < dataPoints.size(); i+=threadDataSize) {
       int endSize = ((i+threadDataSize) > dataPoints.size()) ? dataPoints.size() : (i + threadDataSize);
-      dataList = dataPoints.subList(i, endSize);
-      calcScheduler.submit(dataList);
+      calcScheduler.submit(dataPoints.subList(i, endSize));
     }
     // wait until all of the tasks finished
     for(int i=0;i<threadNum;i++)
