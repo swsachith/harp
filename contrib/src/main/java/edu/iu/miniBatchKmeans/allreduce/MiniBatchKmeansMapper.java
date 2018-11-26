@@ -48,6 +48,8 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     private double totalComputeTime;
     private double computeTime;
     private double totalDataLoadTime;
+    private double memoryUsed;
+
 
     /**
      * This is the initialization function of the K-Means Mapper. Here we can read the parameters
@@ -122,13 +124,18 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
         totalDataLoadTime = 0;
         double loadTime = System.nanoTime();
         // load data
+        long beforeUsedMem=Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory();
         ArrayList<DoubleArray> fullDataPoints = loadData(fileNames, dimension, conf);
+        long afterMemoryUsed=Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory();
+
         totalDataLoadTime += ((System.nanoTime() - loadTime)/1000000);
         numPoints = batchSize;
 
         Table<DoubleArray> previousCenTable;
         computeTime = 0;
         totalComputeTime = 0;
+        memoryUsed = afterMemoryUsed - beforeUsedMem;
+
         // iterations
         for (int iter = 0; iter < iteration; iter++) {
             ArrayList<DoubleArray> dataPoints = getRandomBatch(fullDataPoints, batchSize);
@@ -264,6 +271,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
             writer.write("Total Compute Time (ms) : " + totalComputeTime + "\n");
             writer.write("Compute Time (ms) : " + computeTime + "\n");
             writer.write("Data Load Time (ms) : " + totalDataLoadTime + "\n");
+            writer.write("Data memory used (MB) : " + memoryUsed/1000000 + "\n");
             writer.close();
         }
     }

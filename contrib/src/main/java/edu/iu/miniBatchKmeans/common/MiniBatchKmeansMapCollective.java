@@ -105,15 +105,17 @@ public class MiniBatchKmeansMapCollective
     //Utils.generateInitialCentroids(numCentroids, sizeOfVector, configuration, cenDir, fs, JobID);
 
     long startTime = System.currentTimeMillis();
-
+    long beforeUsedMem=Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory();
     runKMeans(numOfDataPoints, numCentroids,
       sizeOfVector, numIteration, JobID,
       numMapTasks, numThreads, configuration, workDirPath,
       dataDir, cenDir, outDir, operation, batchSize);
+    long afterUsedMem=Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory();
     long endTime = System.currentTimeMillis();
     System.out
       .println("Total K-means Execution Time: "
         + (endTime - startTime));
+      System.out.println("Total Memory Used: " + (afterUsedMem - beforeUsedMem));
   }
 
   private void runKMeans(int numOfDataPoints,

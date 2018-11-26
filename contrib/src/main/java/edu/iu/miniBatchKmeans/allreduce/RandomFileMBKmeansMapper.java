@@ -49,6 +49,8 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
     private double totalComputeTime;
     private double computeTime;
     private double totalDataLoadTime;
+    private double randomFileTime;
+    private double memoryUsed;
 
     /**
      * This is the initialization function of the K-Means Mapper. Here we can read the parameters
@@ -128,12 +130,22 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
         computeTime = 0;
         totalComputeTime = 0;
         totalDataLoadTime = 0;
+        randomFileTime = 0;
+        memoryUsed = Float.MIN_VALUE;
         // iterations
         for (int iter = 0; iter < iteration; iter++) {
-            List<String> randomFile = getRandomFile(fileNames);
+            double randTime = System.nanoTime();
+            List<String> randomFile = getRandomFiles(fileNames);
             LOG.info("FileName: " + randomFile.get(0));
+            randomFileTime += ((System.nanoTime() - randTime)/1000000);
             double loadTime = System.nanoTime();
+            long beforeUsedMem=Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory();
             ArrayList<DoubleArray> dataPoints = loadData(randomFile, dimension, conf);
+            long afterMemUsed=Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory();
+            double latestMemUsed = afterMemUsed - beforeUsedMem;
+
+            memoryUsed = (memoryUsed > latestMemUsed) ? memoryUsed : latestMemUsed;
+
             totalDataLoadTime += ((System.nanoTime() - loadTime)/1000000);
             numPoints = dataPoints.size();
 
@@ -270,6 +282,8 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
             writer.write("Total Compute Time (ms) : " + totalComputeTime + "\n");
             writer.write("Compute Time (ms) : " + computeTime + "\n");
             writer.write("Data Load Time (ms) : " + totalDataLoadTime + "\n");
+            writer.write("Random File Time (ms) : " + randomFileTime + "\n");
+            writer.write("Data Memory used (MB) : " + memoryUsed/1000000 + "\n");
             writer.close();
         }
     }
@@ -399,10 +413,14 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
         return resultArray;
     }
 
-    private List<String> getRandomFile(List<String> fileNames){
-        int randomNumber = ThreadLocalRandom.current().nextInt(0, fileNames.size());
+    private List<String> getRandomFiles(List<String> fileNames){
+        int numberOfFiles = batchSize/1000;
         List<String> randomFile = new ArrayList<>();
-        randomFile.add(fileNames.get(randomNumber));
+        int randomNumber;
+        for (int i = 0; i < numberOfFiles; i++) {
+            randomNumber = ThreadLocalRandom.current().nextInt(0, fileNames.size());
+            randomFile.add(fileNames.get(randomNumber));
+        }
         return randomFile;
     }
 }
