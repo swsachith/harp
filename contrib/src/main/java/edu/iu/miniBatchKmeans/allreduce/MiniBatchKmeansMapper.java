@@ -47,6 +47,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
     private double MSE;
     private double totalComputeTime;
     private double computeTime;
+    private double totalDataLoadTime;
 
     /**
      * This is the initialization function of the K-Means Mapper. Here we can read the parameters
@@ -118,8 +119,11 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
         LOG.info("After brodcasting centroids");
         printTable(cenTable);
 
+        totalDataLoadTime = 0;
+        double loadTime = System.nanoTime();
         // load data
         ArrayList<DoubleArray> fullDataPoints = loadData(fileNames, dimension, conf);
+        totalDataLoadTime += ((System.nanoTime() - loadTime)/1000000);
         numPoints = batchSize;
 
         Table<DoubleArray> previousCenTable;
@@ -259,6 +263,7 @@ public class MiniBatchKmeansMapper extends CollectiveMapper<String, String, Obje
             writer.write("MSE : " + finalMSE + "\n");
             writer.write("Total Compute Time (ms) : " + totalComputeTime + "\n");
             writer.write("Compute Time (ms) : " + computeTime + "\n");
+            writer.write("Data Load Time (ms) : " + totalDataLoadTime + "\n");
             writer.close();
         }
     }

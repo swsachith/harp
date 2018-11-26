@@ -46,6 +46,9 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
     private int batchSize;
     private int numThreads;
     private double MSE;
+    private double totalComputeTime;
+    private double computeTime;
+    private double totalDataLoadTime;
 
     /**
      * This is the initialization function of the K-Means Mapper. Here we can read the parameters
@@ -118,15 +121,20 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
         printTable(cenTable);
 
         // load data
-        ArrayList<DoubleArray> fullDataPoints = loadData(fileNames, dimension, conf);
+        //ArrayList<DoubleArray> fullDataPoints = loadData(fileNames, dimension, conf);
         numPoints = batchSize;
 
         Table<DoubleArray> previousCenTable;
+        computeTime = 0;
+        totalComputeTime = 0;
+        totalDataLoadTime = 0;
         // iterations
         for (int iter = 0; iter < iteration; iter++) {
             List<String> randomFile = getRandomFile(fileNames);
             LOG.info("FileName: " + randomFile.get(0));
+            double loadTime = System.nanoTime();
             ArrayList<DoubleArray> dataPoints = loadData(randomFile, dimension, conf);
+            totalDataLoadTime += ((System.nanoTime() - loadTime)/1000000);
             numPoints = dataPoints.size();
 
             previousCenTable = cenTable;
@@ -134,15 +142,18 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
 
             LOG.info("Iteraton No." + iter);
 
+            double startTime = System.nanoTime();
             // compute new partial centroid table using
             // previousCenTable and data points
             MSE = Utils.computationMultiThdDynamic(cenTable, previousCenTable, dataPoints, numThreads, dimension, batchSize);
+            computeTime += ((System.nanoTime() - startTime)/1000000);
 
             // AllReduce;
             allreduce("main", "allreduce_" + iter,
                     cenTable);
             // we can calculate new centroids
             calculateCentroids(cenTable);
+            totalComputeTime += ((System.nanoTime() - startTime)/1000000);
 
             printTable(cenTable);
         }
@@ -256,6 +267,9 @@ public class RandomFileMBKmeansMapper extends CollectiveMapper<String, String, O
             FSDataOutputStream output = fs.create(path, true);
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output));
             writer.write("MSE : " + finalMSE + "\n");
+            writer.write("Total Compute Time (ms) : " + totalComputeTime + "\n");
+            writer.write("Compute Time (ms) : " + computeTime + "\n");
+            writer.write("Data Load Time (ms) : " + totalDataLoadTime + "\n");
             writer.close();
         }
     }
