@@ -65,7 +65,7 @@ public class CenCalcTask implements Task<List<DoubleArray>, Integer> {
                 }
             }
 
-            this.error += this.minDist;
+            this.error += this.minDist*this.minDist;
 
             // update the pts_assign_sum values
             for(int j=0;j<this.vectorSize;j++)
