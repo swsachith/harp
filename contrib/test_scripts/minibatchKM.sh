@@ -37,8 +37,9 @@ runtest()
        # <num of centriods>: the number of centroids you want to clustering the data to
        # <size of vector>: the number of dimension of the data
        # <number of map tasks>: number of map tasks
+       # <number of threads>: number of threads
        # <number of iteration>: the number of iterations to run
-       # <work dir>: the root directory for this running in HDFS
+       # <work dir>: the root directory for this running in HDFS]
        # <local dir>: the harp kmeans will firstly generate files which contain data points to local directory. Set this argument to determine the local directory.
        # <communication operation>:
        # <batchSize>: the size of the mini batch
@@ -47,7 +48,7 @@ runtest()
     	# 	[regroup-allgather]: use regroup and allgather operation to synchronize centroids 
     	# 	[broadcast-reduce]: use broadcast and reduce operation to synchronize centroids
     	# 	[push-pull]: use push and pull operation to synchronize centroids
-    hadoop jar $bin $className 1000000 10 100 1 2 100 $1 /tmp/kmeans $2 $3
+    hadoop jar $bin $className 1000000 10 100 1 2 100 $1 /tmp/kmeans $2 $3 2000
     
     if [ $? -ne 0 ]; then
         echo "run km failure"
@@ -61,11 +62,5 @@ runtest()
 
 
 }
-
-#run test
-#hadoop jar $bin $className 1000 10 10 2 100 $hdfsoutput/allreduce /tmp/kmeans allreduce
-#hadoop jar $bin $className 1000 10 10 2 100 $hdfsoutput/regroup /tmp/kmeans regroup-allgather
-#hadoop jar $bin $className 1000 10 10 2 100 $hdfsoutput/broadcast /tmp/kmeans broadcast-reduce
-#hadoop jar $bin $className 1000 10 10 2 100 $hdfsoutput/pushpull /tmp/kmeans push-pull
-#runtest /tmp allreduce 1000
+#runtest /tmp allreduce 5000
 runtest /tmp randomFile 1000
